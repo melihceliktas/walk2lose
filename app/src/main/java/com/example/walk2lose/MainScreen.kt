@@ -37,6 +37,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.rememberNavController
 
 @Composable
 fun MainScreen(
@@ -44,14 +46,15 @@ fun MainScreen(
     targetWeight: Int,
     dailyCalories: Int,
     daysLeft: Int,
-    onNavigate: (String) -> Unit
+    navController: NavHostController,
+
 ) {
     Scaffold(
         bottomBar = { // Alt kısmı boş bırakıyoruz, tüm butonlar üst kısımda olacak
         },
         floatingActionButton = { // Ortadaki büyük buton
             FloatingActionButton(
-                onClick = { onNavigate("challenge") },
+                onClick = { navController.navigate("challenge") },
                 shape = RoundedCornerShape(50), // Oval şekil
                 containerColor = MaterialTheme.colorScheme.primary,
                 modifier = Modifier
@@ -75,7 +78,7 @@ fun MainScreen(
         ) {
             // Diğer butonlar
             OvalButton(
-                onClick = { onNavigate("home") },
+                onClick = { navController.navigate("main") },
                 icon = Icons.Default.Home,
                 contentDescription = "Ana Sayfa",
                 modifier = Modifier
@@ -84,7 +87,7 @@ fun MainScreen(
             )
 
             OvalButton(
-                onClick = { onNavigate("profile") },
+                onClick = { navController.navigate("profile") /*onNavigate("profile")*/ },
                 icon = Icons.Default.Person,
                 contentDescription = "Profil",
                 modifier = Modifier
