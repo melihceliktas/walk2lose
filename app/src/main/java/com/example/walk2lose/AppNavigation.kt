@@ -10,7 +10,13 @@ import androidx.navigation.compose.rememberNavController
 fun AppNavigation() {
     val navController = rememberNavController()
 
-    NavHost(navController = navController, startDestination = "main") {
+    NavHost(navController = navController, startDestination = "login") {
+        composable("login") {
+            LoginScreen(navController)
+        }
+        composable("registration") {
+            RegistrationScreen(navController)
+        }
         composable("main") {
             MainScreen(
                 navController = navController,
@@ -20,7 +26,15 @@ fun AppNavigation() {
                 daysLeft = 30
             )
         }
-        composable("profile") { ProfileScreen() }
-        composable("challenge") { ChallengeScreen() }
+        composable("challenge") {
+            ChallengeScreen()
+        }
+        composable("profile") {
+            ProfileScreen(navController)
+        }
+        composable("edit_profile") {
+            EditProfileScreen(navController)
+        }
+
     }
 }

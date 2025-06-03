@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1016345697959",
+    "project_id": "walk2lose-b4357",
+    "storage_bucket": "walk2lose-b4357.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1016345697959:android:18528f63226611f69b0582",
+        "android_client_info": {
+          "package_name": "com.example.walk2lose"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA4pg9g5N2J9G4KVj0LXoxh6BeiG5x8-Q8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
