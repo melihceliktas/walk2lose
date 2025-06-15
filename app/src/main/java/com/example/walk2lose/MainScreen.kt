@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.BottomAppBar
 
 import androidx.compose.material3.FabPosition
 import androidx.compose.material3.FloatingActionButton
@@ -29,6 +30,7 @@ import androidx.compose.material3.Scaffold
 
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -37,38 +39,93 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 
 @Composable
 fun MainScreen(
-    currentWeight: Int,
-    targetWeight: Int,
+
+
     dailyCalories: Int,
-    daysLeft: Int,
+
     navController: NavHostController,
 
+    viewModel: ProfileViewModel = viewModel()
+
 ) {
+
+
+
+    LaunchedEffect(Unit) { viewModel.loadUserData() }
+
+
     Scaffold(
-        bottomBar = { // Alt kısmı boş bırakıyoruz, tüm butonlar üst kısımda olacak
+
+        topBar =  { },
+
+        bottomBar = {
+
         },
         floatingActionButton = { // Ortadaki büyük buton
             FloatingActionButton(
-                onClick = { navController.navigate("challenge") },
+                onClick = { navController.navigate("challenge/10000") },
                 shape = RoundedCornerShape(50), // Oval şekil
                 containerColor = MaterialTheme.colorScheme.primary,
                 modifier = Modifier
+
                     .size(80.dp) // Ortadaki butonun boyutu
-                    .offset(y = (-50).dp) // Ortadaki butonun daha yukarıda olması
+                    .offset(y = (-250).dp) // Ortadaki butonun daha yukarıda olması
             ) {
                 Icon(
-                    imageVector = Icons.Default.LocationOn,
+                    painter = painterResource(id = R.drawable.ic_10k),
                     contentDescription = "Challenge",
                     tint = Color.White,
                     modifier = Modifier.size(40.dp) // İkon boyutu
                 )
             }
+
+
+            FloatingActionButton(onClick = { navController.navigate("challenge/6000") },
+                shape = RoundedCornerShape(50), // Oval şekil
+                containerColor = MaterialTheme.colorScheme.primary,
+
+                modifier = Modifier
+                    .size(80.dp) // Ortadaki butonun boyutu
+                    .offset(x = (-100).dp,y = (-350).dp))
+
+                {
+
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_6k),
+                contentDescription = "Challenge",
+                tint = Color.White,
+                modifier = Modifier.size(40.dp) // İkon boyutu
+            )
+            }
+            FloatingActionButton(onClick = { navController.navigate("challenge/3000") },
+                shape = RoundedCornerShape(50), // Oval şekil
+                containerColor = MaterialTheme.colorScheme.primary,
+
+                modifier = Modifier
+                    .size(80.dp) // Ortadaki butonun boyutu
+                    .offset(y = (-450).dp))
+
+            {
+
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_3k),
+                    contentDescription = "Challenge",
+                    tint = Color.White,
+                    modifier = Modifier.size(40.dp) // İkon boyutu
+                )
+            }
+
+
+
+
         },
+
         floatingActionButtonPosition = FabPosition.Center
     ) { innerPadding ->
         Box(
@@ -77,14 +134,14 @@ fun MainScreen(
                 .padding(innerPadding)
         ) {
             // Diğer butonlar
-            OvalButton(
+            /*OvalButton(
                 onClick = { navController.navigate("main") },
                 icon = Icons.Default.Home,
                 contentDescription = "Ana Sayfa",
                 modifier = Modifier
                     .align(Alignment.BottomStart)
                     .offset(x = 32.dp, y = (-32).dp) // Sol altta, yukarıya kaydırılmış
-            )
+            )*/
 
             OvalButton(
                 onClick = { navController.navigate("profile") /*onNavigate("profile")*/ },
@@ -92,27 +149,31 @@ fun MainScreen(
                 contentDescription = "Profil",
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .offset(x = (-32).dp, y = (-32).dp) // Sağ altta, yukarıya kaydırılmış
+                    .offset(x = (-32).dp, y = (-64).dp) // Sağ altta, yukarıya kaydırılmış
             )
+
+
 
             // İçerik
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
-                    .padding(horizontal = 24.dp, vertical = 16.dp),
+                    .padding(horizontal = 24.dp, vertical = 16.dp)
+                    .offset(y=(32).dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Top
             ) {
+                val userWeightKg = viewModel.userData.value?.weight ?: 0
+
                 WeightAndCalorieRow(
-                    currentWeight = currentWeight,
-                    targetWeight = targetWeight,
+                    currentWeight = userWeightKg,
+
                     dailyCalories = dailyCalories
                 )
 
                 Spacer(modifier = Modifier.height(40.dp))
 
-                RemainingDaysSection(daysLeft = daysLeft)
             }
         }
     }
@@ -130,7 +191,7 @@ fun OvalButton(
         shape = RoundedCornerShape(50), // Oval şekil
         containerColor = MaterialTheme.colorScheme.primary,
         modifier = modifier
-            .size(60.dp) // Boyutları
+            .size(75.dp) // Boyutları
     ) {
         Icon(
             imageVector = icon,
@@ -144,7 +205,7 @@ fun OvalButton(
 @Composable
 fun WeightAndCalorieRow(
     currentWeight: Int,
-    targetWeight: Int,
+
     dailyCalories: Int
 ) {
     Row(
@@ -156,7 +217,7 @@ fun WeightAndCalorieRow(
 
         DailyCalorieSection(calorie = dailyCalories)
 
-        WeightInfo(label = "Hedef", value = "$targetWeight KG", icon = R.drawable.ic_goal)
+
     }
 }
 
@@ -178,7 +239,7 @@ fun DailyCalorieSection(calorie: Int) {
     }
 }
 
-@Composable
+/*@Composable
 fun RemainingDaysSection(daysLeft: Int) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
@@ -192,7 +253,7 @@ fun RemainingDaysSection(daysLeft: Int) {
             color = MaterialTheme.colorScheme.primary
         )
     }
-}
+}*/
 
 
 

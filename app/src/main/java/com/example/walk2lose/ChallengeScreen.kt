@@ -30,7 +30,6 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -45,20 +44,27 @@ import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlin.math.*
+import androidx.compose.runtime.collectAsState as collectAsState1
 
 @Composable
 fun ChallengeScreen(
-    viewModel: ChallengeViewModel = viewModel()
+    selectedSteps: Int,
+    viewModel: ChallengeViewModel = viewModel(),
+
+    udviewModel: ProfileViewModel = viewModel()
 ) {
     val context = LocalContext.current
     val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
     val cameraPositionState = rememberCameraPositionState()
     var userLocation by remember { mutableStateOf<LatLng?>(null) }
-    val targetLocation by viewModel.targetLocation.collectAsState()
+    val targetLocation by viewModel.targetLocation.collectAsState1()
     var routePoints by remember { mutableStateOf<List<LatLng>>(emptyList()) }
     val coroutineScope = rememberCoroutineScope()
     val lifecycleOwner = LocalLifecycleOwner.current
     val apiKey = "AIzaSyAHBvqnRsi-f0zWmAMF42xQ7o35cCEkK34"
+
+
+    LaunchedEffect(Unit) { udviewModel.loadUserData() }
 
     // Location updates
     DisposableEffect(lifecycleOwner) {
@@ -102,12 +108,16 @@ fun ChallengeScreen(
     // Hedef konumu sadece userLocation geldiyse ve targetLocation yoksa ViewModel’a set et
     LaunchedEffect(userLocation) {
         if (userLocation != null && targetLocation == null) {
-            val randomLoc = generateRandomLocation(userLocation!!, 500.0)
+
+
+            val radius = selectedSteps * 0.7 / 2
+            val randomLoc = generateRandomLocation(userLocation!!, radius)
             viewModel.setTargetLocation(randomLoc)
         }
     }
     var distanceText by remember { mutableStateOf("") }
     var durationText by remember { mutableStateOf("") }
+    var caloriesText by remember { mutableStateOf("") }
     // Directions API çağrısı
     LaunchedEffect(userLocation, targetLocation) {
         if (userLocation != null && targetLocation != null) {
@@ -119,26 +129,57 @@ fun ChallengeScreen(
 
                 val directionsApi = retrofit.create(DirectionsApi::class.java)
 
-                val response = directionsApi.getDirections(
+                // İlk rota: Başlangıç -> Hedef
+                val toTargetResponse = directionsApi.getDirections(
                     origin = "${userLocation!!.latitude},${userLocation!!.longitude}",
                     destination = "${targetLocation!!.latitude},${targetLocation!!.longitude}",
                     apiKey = apiKey,
                     mode = "walking"
                 )
 
-                val points = response.routes.firstOrNull()?.overviewPolyline?.points
-                if (points != null) {
-                    routePoints = decodePolyline(points)
+                // İkinci rota: Hedef -> Başlangıç
+                val toStartResponse = directionsApi.getDirections(
+                    origin = "${targetLocation!!.latitude},${targetLocation!!.longitude}",
+                    destination = "${userLocation!!.latitude},${userLocation!!.longitude}",
+                    apiKey = apiKey,
+                    mode = "walking"
+                )
+
+                val points1 = toTargetResponse.routes.firstOrNull()?.overviewPolyline?.points
+                val points2 = toStartResponse.routes.firstOrNull()?.overviewPolyline?.points
+
+                val decoded1 = if (points1 != null) decodePolyline(points1) else emptyList()
+                val decoded2 = if (points2 != null) decodePolyline(points2) else emptyList()
+
+                routePoints = decoded1 + decoded2
+
+                val leg1 = toTargetResponse.routes.firstOrNull()?.legs?.firstOrNull()
+                val leg2 = toStartResponse.routes.firstOrNull()?.legs?.firstOrNull()
+
+                val totalDistance = (leg1?.distance?.value)?.plus((leg2?.distance?.value!!))
+                val totalDuration = (leg1?.duration?.value)?.plus((leg2?.duration?.value!!))
+
+                if (totalDistance != null) {
+                    distanceText = "%.2f km".format(totalDistance/ 1000.0)
                 }
 
-                val leg = response.routes.firstOrNull()?.legs?.firstOrNull()
-                if (leg != null) {
-                    distanceText = leg.distance.text ?: ""
-                    durationText = leg.duration.text ?: ""
-                }
+
+                val minutes = totalDuration?.div(60)
+
+                durationText ="$minutes dakika"
+
+
+                val userWeightKg = udviewModel.userData.value?.weight ?: 0
+
+                val MET = 3.5
+                val caloriesBurned = (MET * 3.5 * userWeightKg / 200) * minutes!!
+
+
+                caloriesText = "%.0f kcal".format(caloriesBurned)
+
 
             } catch (e: Exception) {
-                Log.e("Directions", "Error fetching directions", e)
+                Log.e("Directions", "Error fetching roundtrip directions", e)
             }
         }
     }
@@ -154,6 +195,7 @@ fun ChallengeScreen(
             targetLocation?.let { Marker(state = MarkerState(position = it), title = "Hedef") }
             if (routePoints.isNotEmpty()) {
                 Polyline(points = routePoints, color = Color.Blue, width = 6f)
+
             }
         }
     }
@@ -167,6 +209,8 @@ fun ChallengeScreen(
             Text(text = "Mesafe: $distanceText", style = MaterialTheme.typography.bodyLarge)
             Spacer(modifier = Modifier.height(8.dp))
             Text(text = "Tahmini Süre: $durationText", style = MaterialTheme.typography.bodyLarge)
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(text = "Yaklaşık Kalori: $caloriesText", style = MaterialTheme.typography.bodyLarge)
         }
 }}
 
@@ -201,3 +245,4 @@ fun calculateBearing(start: LatLng, end: LatLng): Float {
     val bearing = Math.toDegrees(Math.atan2(y, x)).toFloat()
     return (bearing + 360) % 360
 }
+
