@@ -27,10 +27,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
@@ -63,6 +65,7 @@ fun ChallengeScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
     val apiKey = "AIzaSyAHBvqnRsi-f0zWmAMF42xQ7o35cCEkK34"
 
+    var isFindingTarget by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) { udviewModel.loadUserData() }
 
@@ -108,13 +111,22 @@ fun ChallengeScreen(
     // Hedef konumu sadece userLocation geldiyse ve targetLocation yoksa ViewModel’a set et
     LaunchedEffect(userLocation) {
         if (userLocation != null && targetLocation == null) {
-
+            //viewModel.setLoading(true)
 
             val radius = selectedSteps * 0.7 / 2
-            val randomLoc = generateRandomLocation(userLocation!!, radius)
+
+
+            //Accurate Path finding function is bellow however I'm using a free api to check
+            //if there is a road nearby or not so I can't use it all time
+
+            //val randomLoc = generateValidTargetLocation(userLocation!!, radius.toInt())
+            val randomLoc = generateRandomLocation(userLocation!!, radius.toInt())
             viewModel.setTargetLocation(randomLoc)
+
+            //viewModel.setLoading(false)
         }
     }
+
     var distanceText by remember { mutableStateOf("") }
     var durationText by remember { mutableStateOf("") }
     var caloriesText by remember { mutableStateOf("") }
@@ -183,8 +195,12 @@ fun ChallengeScreen(
             }
         }
     }
+
+
     Column(modifier = Modifier.fillMaxSize()) {
-    Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+    Box(modifier = Modifier
+        .weight(1f)
+        .fillMaxWidth()) {
         GoogleMap(
             modifier = Modifier.fillMaxSize(),
             cameraPositionState = cameraPositionState,
@@ -214,16 +230,27 @@ fun ChallengeScreen(
         }
 }}
 
-fun generateRandomLocation(center: LatLng, radiusMeters: Double): LatLng {
-    val random = java.util.Random()
-    val radiusInDegrees = radiusMeters / 111000f
+fun generateRandomLocation(center: LatLng, selectedSteps: Int): LatLng {
+    val stepLength = 0.75 // Ortalama adım uzunluğu (metre)
+    val totalDistance = selectedSteps * stepLength // Gidiş + dönüş
+    val oneWayDistance = totalDistance / 2.0
 
+    // Min ve max mesafe (tek yön) %10 tolerans ile
+    val minRadius = oneWayDistance * 0.9
+    val maxRadius = oneWayDistance * 1.1
+
+    val random = java.util.Random()
+    val radiusInDegreesMin = minRadius / 111000f
+    val radiusInDegreesMax = maxRadius / 111000f
+
+    // Rastgele mesafe [min, max]
     val u = random.nextDouble()
     val v = random.nextDouble()
-    val w = radiusInDegrees * Math.sqrt(u)
+    val radiusInDegrees = radiusInDegreesMin + (radiusInDegreesMax - radiusInDegreesMin) * u
+
     val t = 2 * Math.PI * v
-    val x = w * Math.cos(t)
-    val y = w * Math.sin(t)
+    val x = radiusInDegrees * Math.cos(t)
+    val y = radiusInDegrees * Math.sin(t)
 
     val newLat = center.latitude + y
     val newLng = center.longitude + x / Math.cos(Math.toRadians(center.latitude))
@@ -246,3 +273,10 @@ fun calculateBearing(start: LatLng, end: LatLng): Float {
     return (bearing + 360) % 360
 }
 
+suspend fun generateValidTargetLocation(center: LatLng, radiusMeters: Int): LatLng {
+    var target: LatLng
+    do {
+        target = generateRandomLocation(center, radiusMeters)
+    } while (!isRoadNearby(target.latitude, target.longitude))
+    return target
+}
