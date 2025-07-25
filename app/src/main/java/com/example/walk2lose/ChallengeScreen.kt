@@ -18,21 +18,31 @@ import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.*
 import android.Manifest
+import android.location.Location
 import android.os.Looper
 import android.util.Log
 import androidx.compose.foundation.background
+import androidx.compose.ui.Alignment
+
 import androidx.compose.foundation.layout.Column
+
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.Alignment
+
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
@@ -45,6 +55,7 @@ import kotlinx.coroutines.launch
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
 import kotlin.math.*
 import androidx.compose.runtime.collectAsState as collectAsState1
 
@@ -53,7 +64,9 @@ fun ChallengeScreen(
     selectedSteps: Int,
     viewModel: ChallengeViewModel = viewModel(),
 
-    udviewModel: ProfileViewModel = viewModel()
+    udviewModel: ProfileViewModel = viewModel(),
+
+    navController: NavController
 ) {
     val context = LocalContext.current
     val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
@@ -107,6 +120,8 @@ fun ChallengeScreen(
             fusedLocationClient.removeLocationUpdates(locationCallback)
         }
     }
+
+
 
     // Hedef konumu sadece userLocation geldiyse ve targetLocation yoksa ViewModel’a set et
     LaunchedEffect(userLocation) {
@@ -178,6 +193,8 @@ fun ChallengeScreen(
 
                 val minutes = totalDuration?.div(60)
 
+                val tdistance = totalDistance?.div(1000)
+
                 durationText ="$minutes dakika"
 
 
@@ -189,12 +206,21 @@ fun ChallengeScreen(
 
                 caloriesText = "%.0f kcal".format(caloriesBurned)
 
+                if(isUserAtTarget(userLocation!!, targetLocation!!)){
+
+                    udviewModel.updateCaloriesBurned(caloriesBurned.toInt())
+                    navController.navigate("finish/$selectedSteps/${caloriesBurned.toInt()}")
+                }
+
+
 
             } catch (e: Exception) {
                 Log.e("Directions", "Error fetching roundtrip directions", e)
             }
         }
     }
+
+
 
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -227,6 +253,13 @@ fun ChallengeScreen(
             Text(text = "Tahmini Süre: $durationText", style = MaterialTheme.typography.bodyLarge)
             Spacer(modifier = Modifier.height(8.dp))
             Text(text = "Yaklaşık Kalori: $caloriesText", style = MaterialTheme.typography.bodyLarge)
+        }
+        Button(onClick = {navController.navigate("finish/3000/100")}, modifier = Modifier
+            .padding(16.dp)) {
+
+            Text(text = "TEST")
+
+            Icon(Icons.Default.Check, contentDescription = "Challenge Bitir")
         }
 }}
 
@@ -273,6 +306,8 @@ fun calculateBearing(start: LatLng, end: LatLng): Float {
     return (bearing + 360) % 360
 }
 
+
+
 suspend fun generateValidTargetLocation(center: LatLng, radiusMeters: Int): LatLng {
     var target: LatLng
     do {
@@ -280,3 +315,22 @@ suspend fun generateValidTargetLocation(center: LatLng, radiusMeters: Int): LatL
     } while (!isRoadNearby(target.latitude, target.longitude))
     return target
 }
+
+fun isUserAtTarget(userLoc: LatLng, targetLoc: LatLng): Boolean {
+    val distance = calculateDistance(userLoc, targetLoc)
+    return distance < 10 // Hedefe 10 metre mesafeye gelirse challenge bitmiş sayılır
+}
+
+// Mesafe hesaplama fonksiyonu (iki nokta arasındaki mesafe)
+fun calculateDistance(start: LatLng, end: LatLng): Float {
+    val results = FloatArray(1)
+    Location.distanceBetween(start.latitude, start.longitude, end.latitude, end.longitude, results)
+    return results[0]
+}
+
+
+// Challenge'ı bitirme fonksiyonu
+/*fun endChallenge() {
+    val totalCaloriesBurned = calculateCalories(selectedSteps)
+    udviewModel.updateCaloriesBurned(totalCaloriesBurned)
+}*/

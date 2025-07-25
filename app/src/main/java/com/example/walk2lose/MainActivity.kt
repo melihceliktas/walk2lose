@@ -11,6 +11,10 @@ import com.example.walk2lose.ui.theme.Walk2LoseTheme
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        val profileViewModel = ProfileViewModel()
+        profileViewModel.startDailyResetTimer()
+
         enableEdgeToEdge()
         requestLocationPermission()
         setContent {

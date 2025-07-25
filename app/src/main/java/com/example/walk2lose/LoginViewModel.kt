@@ -14,7 +14,8 @@ data class UserData(
     val email: String = "",
     val age: Int = 0,
     val weight: Int = 0,
-    val height: Int = 0
+    val height: Int = 0,
+    val caloriesBurned: Int = 0
 )
 
 class LoginViewModel : ViewModel() {

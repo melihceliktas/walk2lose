@@ -169,7 +169,7 @@ fun MainScreen(
                 WeightAndCalorieRow(
                     currentWeight = userWeightKg,
 
-                    dailyCalories = dailyCalories
+                    dailyCalories = viewModel.userData.value?.caloriesBurned ?: 0
                 )
 
                 Spacer(modifier = Modifier.height(40.dp))
@@ -234,7 +234,7 @@ fun WeightInfo(label: String, value: String, icon: Int) {
 fun DailyCalorieSection(calorie: Int) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Icon(painter = painterResource(id = R.drawable.ic_fire), contentDescription = "Kalori", tint = Color.Red, modifier = Modifier.size(40.dp))
-        Text(text = "Günlük", style = MaterialTheme.typography.bodyMedium)
+        Text(text = "Yakılan Kalori", style = MaterialTheme.typography.bodyMedium)
         Text(text = "$calorie kcal", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
     }
 }

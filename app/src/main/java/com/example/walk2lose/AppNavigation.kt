@@ -38,7 +38,18 @@ fun AppNavigation(
             navArgument("steps") { type = NavType.IntType }
         )) { backStackEntry ->
             val steps = backStackEntry.arguments?.getInt("steps") ?: 3000
-            ChallengeScreen(selectedSteps = steps)
+            ChallengeScreen(selectedSteps = steps, navController = navController)
+        }
+
+        composable("finish/{steps}/{calories}",listOf(
+            navArgument("steps") { type = NavType.IntType },
+            navArgument("calories") { type = NavType.IntType }
+        )) { backStackEntry ->
+
+            val steps = backStackEntry.arguments?.getInt("steps") ?: 0
+            val calories = backStackEntry.arguments?.getInt("calories") ?: 0
+
+            FinishScreen(steps = steps, calories = calories,navController = navController)
         }
 
         composable("profile") {
