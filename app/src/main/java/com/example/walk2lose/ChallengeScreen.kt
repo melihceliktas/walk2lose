@@ -117,7 +117,7 @@ fun ChallengeScreen(
 
 
             //Accurate Path finding function is bellow however I'm using a free api to check
-            //if there is a road nearby or not so I can't use it all time
+            //if there is a road nearby or not, I can't use it all time
 
             //val randomLoc = generateValidTargetLocation(userLocation!!, radius.toInt())
             val randomLoc = generateRandomLocation(userLocation!!, radius.toInt())
@@ -235,9 +235,9 @@ fun generateRandomLocation(center: LatLng, selectedSteps: Int): LatLng {
     val totalDistance = selectedSteps * stepLength // Gidiş + dönüş
     val oneWayDistance = totalDistance / 2.0
 
-    // Min ve max mesafe (tek yön) %10 tolerans ile
-    val minRadius = oneWayDistance * 0.9
-    val maxRadius = oneWayDistance * 1.1
+    // Min ve max mesafe (tek yön) %5 tolerans ile
+    val minRadius = oneWayDistance * 0.95
+    val maxRadius = oneWayDistance * 1.05
 
     val random = java.util.Random()
     val radiusInDegreesMin = minRadius / 111000f
