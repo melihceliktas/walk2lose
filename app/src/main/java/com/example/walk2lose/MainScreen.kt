@@ -73,7 +73,7 @@ fun MainScreen(
     LaunchedEffect(Unit) { viewModel.loadUserData() }
 
     val userData by viewModel.userData.collectAsState()
-    val dailyCalories = userData?.caloriesBurned ?: 0
+    val dailyCalories by viewModel.getTodayCaloriesFlow().collectAsState()
 
     Scaffold(
         modifier = Modifier.background(
@@ -97,8 +97,7 @@ fun MainScreen(
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = 16.dp)
+
                 .background(
                     brush = Brush.verticalGradient(
                         colors = listOf(
@@ -106,6 +105,8 @@ fun MainScreen(
                             MaterialTheme.colorScheme.background
                         )
                     ))
+                .padding(innerPadding)
+                .padding(horizontal = 16.dp)
         ) {
 
             val screenHeight = maxHeight

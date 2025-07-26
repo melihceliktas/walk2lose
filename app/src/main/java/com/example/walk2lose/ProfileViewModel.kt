@@ -7,12 +7,16 @@ import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.firestore
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -29,6 +33,7 @@ class ProfileViewModel : ViewModel() {
     private val auth = FirebaseAuth.getInstance()
     private val firestore = FirebaseFirestore.getInstance()
 
+    val dailyStatsKcal = MutableStateFlow<List<DailyStats>>(emptyList())
 
 
 
@@ -78,6 +83,8 @@ class ProfileViewModel : ViewModel() {
         }
     }
 
+
+
     // Günlük kalori bilgilerini sıfırlama
     fun resetDailyCalories() {
         val updatedUser = _userData.value?.copy(caloriesBurned = 0)
@@ -99,6 +106,13 @@ class ProfileViewModel : ViewModel() {
             resetDailyCalories()  // Günlük kalori sıfırlama
         }, delayTime)
     }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    fun getTodayCaloriesFlow(): StateFlow<Int> {
+        return dailyStats.map { getTodayCalories(it) }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, 0)
+    }
+
 
 
     // Günlük verileri çekme
@@ -162,3 +176,15 @@ class ProfileViewModel : ViewModel() {
             }
 
 }}
+
+@RequiresApi(Build.VERSION_CODES.O)
+fun getTodayEpochDay(): Long {
+    return LocalDate.now().toEpochDay()
+}
+@RequiresApi(Build.VERSION_CODES.O)
+fun getTodayCalories(stats: List<DailyStats>): Int {
+    val today = getTodayEpochDay()
+    return stats
+        .filter { it.date == today }
+        .sumOf { it.caloriesBurned }
+}

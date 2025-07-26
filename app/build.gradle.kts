@@ -52,6 +52,7 @@ dependencies {
     implementation ("com.squareup.retrofit2:retrofit:2.9.0")
     implementation ("com.squareup.retrofit2:converter-moshi:2.9.0")
     implementation("com.squareup.moshi:moshi:1.15.0")
+    implementation(libs.androidx.work.runtime.ktx)
     kapt("com.squareup.moshi:moshi-kotlin-codegen:1.15.0")
 
 
