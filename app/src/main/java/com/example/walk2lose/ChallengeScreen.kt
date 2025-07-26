@@ -209,6 +209,9 @@ fun ChallengeScreen(
                 if(isUserAtTarget(userLocation!!, targetLocation!!)){
 
                     udviewModel.updateCaloriesBurned(caloriesBurned.toInt())
+
+                    udviewModel.saveDailyStats(selectedSteps, caloriesBurned.toInt())
+
                     navController.navigate("finish/$selectedSteps/${caloriesBurned.toInt()}")
                 }
 
@@ -254,7 +257,11 @@ fun ChallengeScreen(
             Spacer(modifier = Modifier.height(8.dp))
             Text(text = "Yaklaşık Kalori: $caloriesText", style = MaterialTheme.typography.bodyLarge)
         }
-        Button(onClick = {navController.navigate("finish/3000/100")}, modifier = Modifier
+        Button(onClick = {
+
+            udviewModel.saveDailyStats(3000, 100)
+
+            navController.navigate("finish/3000/100")}, modifier = Modifier
             .padding(16.dp)) {
 
             Text(text = "TEST")

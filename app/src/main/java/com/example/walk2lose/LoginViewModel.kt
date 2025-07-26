@@ -18,6 +18,12 @@ data class UserData(
     val caloriesBurned: Int = 0
 )
 
+data class DailyStats(
+    val date: Long = 0, // Tarih (epoch day formatında)
+    val steps: Int = 0,
+    val caloriesBurned: Int = 0
+)
+
 class LoginViewModel : ViewModel() {
 
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
