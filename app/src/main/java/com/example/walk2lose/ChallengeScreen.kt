@@ -18,9 +18,15 @@ import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.*
 import android.Manifest
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.location.Location
+import android.os.Build
 import android.os.Looper
 import android.util.Log
+import androidx.activity.compose.BackHandler
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.ui.Alignment
 
@@ -32,20 +38,24 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.draw.clip
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
@@ -56,9 +66,17 @@ import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.google.android.gms.maps.model.BitmapDescriptor
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
+import com.google.android.gms.maps.model.JointType
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
+import java.util.Random
 import kotlin.math.*
 import androidx.compose.runtime.collectAsState as collectAsState1
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun ChallengeScreen(
     selectedSteps: Int,
@@ -78,9 +96,27 @@ fun ChallengeScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
     val apiKey = "AIzaSyAHBvqnRsi-f0zWmAMF42xQ7o35cCEkK34"
 
-    var isFindingTarget by remember { mutableStateOf(false) }
+    var totalDistanceWalked by remember { mutableStateOf(0.0) }
+    var lastLocation by remember { mutableStateOf<LatLng?>(null) }
+    var totalDistance by remember { mutableStateOf(0) }
+    var totalDuration by remember { mutableStateOf(0)}
+
+   // saniye
+    var challengeStarted by remember { mutableStateOf(false) }
+
+    var isRouteLoading by remember { mutableStateOf(false) }
+
+    val elapsed by viewModel.elapsedTime.collectAsState1()
+
+    BackHandler(enabled = true) {
+
+    }
 
     LaunchedEffect(Unit) { udviewModel.loadUserData() }
+
+    LaunchedEffect(Unit) {
+        viewModel.resetTimer()
+    }
 
     // Location updates
     DisposableEffect(lifecycleOwner) {
@@ -97,16 +133,15 @@ fun ChallengeScreen(
                             0f,
                             bearing
                         )
-
                         coroutineScope.launch {
                             cameraPositionState.animate(
                                 update = CameraUpdateFactory.newCameraPosition(newCameraPosition)
                             )
-
                         }
                     }
                 }
-            }}
+            }
+        }
 
         val locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 5000L)
             .setMinUpdateIntervalMillis(3000L)
@@ -121,30 +156,65 @@ fun ChallengeScreen(
         }
     }
 
+    // Kullanıcının yürüdüğü mesafe
+    LaunchedEffect(userLocation) {
+        if (lastLocation != null && userLocation != null) {
+            val dist = FloatArray(1)
+            Location.distanceBetween(
+                lastLocation!!.latitude, lastLocation!!.longitude,
+                userLocation!!.latitude, userLocation!!.longitude,
+                dist
+            )
+            totalDistanceWalked += dist[0]
+        }
+        lastLocation = userLocation
+    }
 
 
-    // Hedef konumu sadece userLocation geldiyse ve targetLocation yoksa ViewModel’a set et
+    if (elapsed % 60 <= 1.01) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.6f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                CircularProgressIndicator(color = Color.White)
+                Spacer(modifier = Modifier.height(12.dp))
+                Text("En uygun rota bulunuyor...", color = Color.White, fontSize = 18.sp)
+            }
+        }
+    }
+
+    // Hedef konum belirleme
     LaunchedEffect(userLocation) {
         if (userLocation != null && targetLocation == null) {
-            //viewModel.setLoading(true)
 
             val radius = selectedSteps * 0.7 / 2
 
+            // IO thread'de çalıştır (uzun süren işlem gibi davransın)
 
-            //Accurate Path finding function is bellow however I'm using a free api to check
-            //if there is a road nearby or not, I can't use it all time
+            val randomLoc = generateValidTarget(userLocation!!, selectedSteps, apiKey)
+            if (randomLoc != null) viewModel.setTargetLocation(randomLoc)
 
-            //val randomLoc = generateValidTargetLocation(userLocation!!, radius.toInt())
-            val randomLoc = generateRandomLocation(userLocation!!, radius.toInt())
-            viewModel.setTargetLocation(randomLoc)
 
-            //viewModel.setLoading(false)
         }
     }
+
+
+
 
     var distanceText by remember { mutableStateOf("") }
     var durationText by remember { mutableStateOf("") }
     var caloriesText by remember { mutableStateOf("") }
+
+    LaunchedEffect(routePoints) {
+        if (routePoints.isNotEmpty() ) {
+
+            viewModel.startTimer()
+        }
+    }
+
     // Directions API çağrısı
     LaunchedEffect(userLocation, targetLocation) {
         if (userLocation != null && targetLocation != null) {
@@ -156,7 +226,6 @@ fun ChallengeScreen(
 
                 val directionsApi = retrofit.create(DirectionsApi::class.java)
 
-                // İlk rota: Başlangıç -> Hedef
                 val toTargetResponse = directionsApi.getDirections(
                     origin = "${userLocation!!.latitude},${userLocation!!.longitude}",
                     destination = "${targetLocation!!.latitude},${targetLocation!!.longitude}",
@@ -164,7 +233,6 @@ fun ChallengeScreen(
                     mode = "walking"
                 )
 
-                // İkinci rota: Hedef -> Başlangıç
                 val toStartResponse = directionsApi.getDirections(
                     origin = "${targetLocation!!.latitude},${targetLocation!!.longitude}",
                     destination = "${userLocation!!.latitude},${userLocation!!.longitude}",
@@ -183,67 +251,118 @@ fun ChallengeScreen(
                 val leg1 = toTargetResponse.routes.firstOrNull()?.legs?.firstOrNull()
                 val leg2 = toStartResponse.routes.firstOrNull()?.legs?.firstOrNull()
 
-                val totalDistance = (leg1?.distance?.value)?.plus((leg2?.distance?.value!!))
-                val totalDuration = (leg1?.duration?.value)?.plus((leg2?.duration?.value!!))
+                val dist1 = leg1?.distance?.value ?: 0
+                val dist2 = leg2?.distance?.value ?: 0
+                totalDistance = dist1 + dist2
 
-                if (totalDistance != null) {
-                    distanceText = "%.2f km".format(totalDistance/ 1000.0)
+                if (totalDistance > 0) {
+                    distanceText = "%.2f km".format(totalDistance / 1000.0)
                 }
 
-
-                val minutes = totalDuration?.div(60)
-
-                val tdistance = totalDistance?.div(1000)
-
-                durationText ="$minutes dakika"
-
+                totalDuration = (leg1?.duration?.value ?: 0) + (leg2?.duration?.value ?: 0)
+                val minutes = totalDuration / 60
+                durationText = "$minutes dakika"
 
                 val userWeightKg = udviewModel.userData.value?.weight ?: 0
-
                 val MET = 3.5
-                val caloriesBurned = (MET * 3.5 * userWeightKg / 200) * minutes!!
-
-
+                val caloriesBurned = (MET * 3.5 * userWeightKg / 200) * minutes
                 caloriesText = "%.0f kcal".format(caloriesBurned)
 
-                if(isUserAtTarget(userLocation!!, targetLocation!!)){
-
+                /*if (isUserAtTarget(userLocation!!, targetLocation!!)) {
                     udviewModel.updateCaloriesBurned(caloriesBurned.toInt())
-
                     udviewModel.saveDailyStats(selectedSteps, caloriesBurned.toInt())
-
-                    navController.navigate("finish/$selectedSteps/${caloriesBurned.toInt()}")
-                }
-
-
+                    navController.navigate("finish/$selectedSteps/${caloriesBurned.toInt()}") {
+                        popUpTo("challenge/$selectedSteps") { inclusive = true }
+                    }
+                }*/
 
             } catch (e: Exception) {
-                Log.e("Directions", "Error fetching roundtrip directions", e)
+                Log.e("Directions", "Error fetching route", e)
             }
         }
     }
 
+    val contextx = LocalContext.current
 
+    // Progress hesaplama
+    val progress = if (totalDistance > 0) {
+        (totalDistanceWalked / totalDistance).coerceIn(0.0, 1.0)
+    } else 0.0
+
+    LaunchedEffect(progress) {
+
+        if(progress >= 1.0 && userLocation != null && targetLocation != null) {
+
+            val userWeightKg = udviewModel.userData.value?.weight ?: 0
+            val MET = 3.5
+            val caloriesBurned = (MET * 3.5 * userWeightKg / 200) * (totalDuration/60)
+
+            val minutes = elapsed / 60
+            val seconds = elapsed % 60
+
+            val formattedDuration = String.format("%02d:%02d", minutes, seconds)
+
+            udviewModel.updateCaloriesBurned(caloriesBurned.toInt())
+            udviewModel.saveDailyStats(selectedSteps, caloriesBurned.toInt())
+
+            viewModel.stopTimer()
+
+            navController.navigate("finish/$selectedSteps/${caloriesBurned.toInt()}/$formattedDuration") {
+                popUpTo("challenge/$selectedSteps") { inclusive = true }
+            }
+
+        }
+
+    }
 
 
     Column(modifier = Modifier.fillMaxSize()) {
-    Box(modifier = Modifier
-        .weight(1f)
-        .fillMaxWidth()) {
-        GoogleMap(
-            modifier = Modifier.fillMaxSize(),
-            cameraPositionState = cameraPositionState,
-            properties = MapProperties(isMyLocationEnabled = true),
-            uiSettings = MapUiSettings(zoomControlsEnabled = true)
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
         ) {
-            userLocation?.let { Marker(state = MarkerState(position = it), title = "Senin Konumun") }
-            targetLocation?.let { Marker(state = MarkerState(position = it), title = "Hedef") }
-            if (routePoints.isNotEmpty()) {
-                Polyline(points = routePoints, color = Color.Blue, width = 6f)
+            GoogleMap(
+                modifier = Modifier.fillMaxSize(),
+                cameraPositionState = cameraPositionState,
+                properties = MapProperties(isMyLocationEnabled = true),
+                uiSettings = MapUiSettings(zoomControlsEnabled = true)
+            ) {
+                userLocation?.let {
+                    Marker(
+                        state = MarkerState(position = it),
+                        title = "Senin Konumun",
+                        icon = contextx.bitmapDescriptorFromRes(R.drawable.ic_user_marker)
+                    )
+                }
+                targetLocation?.let {
+                    Marker(
+                        state = MarkerState(position = it),
+                        title = "Hedef",
+                        icon = contextx.bitmapDescriptorFromRes(R.drawable.ic_target_marker)
+                    )
+                }
+                if (routePoints.isNotEmpty()) {
+                    val half = routePoints.size / 2
+                    val toTargetPoints = routePoints.subList(0, half)
+                    val toStartPoints = routePoints.subList(half, routePoints.size)
 
+                    Polyline(
+                        points = toTargetPoints,
+                        color = Color(0xFF3F51B5).copy(alpha = 0.85f),
+                        width = 14f,
+                        jointType = JointType.ROUND
+                    )
+                    Polyline(
+                        points = toStartPoints,
+                        color = Color(0xFFFF5252).copy(alpha = 0.9f),
+                        width = 14f,
+                        jointType = JointType.ROUND
+                    )
+                }
             }
         }
-    }
+
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -256,28 +375,86 @@ fun ChallengeScreen(
             Text(text = "Tahmini Süre: $durationText", style = MaterialTheme.typography.bodyLarge)
             Spacer(modifier = Modifier.height(8.dp))
             Text(text = "Yaklaşık Kalori: $caloriesText", style = MaterialTheme.typography.bodyLarge)
+            Spacer(modifier = Modifier.height(8.dp))
+
+            val minutes = elapsed / 60
+            val seconds = elapsed % 60
+
+            val formattedDuration = String.format("%02d:%02d", minutes, seconds)
+
+            Text(
+                text = String.format("Geçen Süre: %02d:%02d", minutes, seconds),
+                style = MaterialTheme.typography.bodyLarge
+            )
+
+
+            Spacer(modifier = Modifier.height(12.dp))
+            LinearProgressIndicator(
+                progress = progress.toFloat(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(12.dp)
+                    .clip(RoundedCornerShape(8.dp)),
+                color = MaterialTheme.colorScheme.primary
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "${(progress * 100).toInt()}% tamamlandı",
+                style = MaterialTheme.typography.bodyMedium
+            )
+
+            Button(
+                onClick = {
+                    totalDistanceWalked = totalDistance.toDouble() // test
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                Text("test")
+            }
+
+
+
+            Button(
+                onClick = {
+                    // Challenge'ı manuel bitir
+                    val userWeightKg = udviewModel.userData.value?.weight ?: 0
+                    val MET = 3.5
+                    val caloriesBurned = (MET * 3.5 * userWeightKg / 200) * (elapsed / 60.0)
+
+                    val stepLength = 0.70
+                    val currentSteps = (totalDistanceWalked / stepLength).toInt()
+
+                    udviewModel.updateCaloriesBurned(caloriesBurned.toInt())
+                    udviewModel.saveDailyStats(currentSteps, caloriesBurned.toInt())
+
+                    viewModel.stopTimer()
+
+                    navController.navigate("incomplete/$currentSteps/${caloriesBurned.toInt()}/$formattedDuration") {
+                        popUpTo("challenge/$selectedSteps") { inclusive = true }
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                Text("Challenge'ı Bitir")
+            }
+
         }
-        Button(onClick = {
-
-            udviewModel.saveDailyStats(3000, 100)
-
-            navController.navigate("finish/3000/100")}, modifier = Modifier
-            .padding(16.dp)) {
-
-            Text(text = "TEST")
-
-            Icon(Icons.Default.Check, contentDescription = "Challenge Bitir")
-        }
-}}
+    }
+}
 
 fun generateRandomLocation(center: LatLng, selectedSteps: Int): LatLng {
-    val stepLength = 0.75 // Ortalama adım uzunluğu (metre)
+    val stepLength = 0.70 // Ortalama adım uzunluğu (metre)
     val totalDistance = selectedSteps * stepLength // Gidiş + dönüş
     val oneWayDistance = totalDistance / 2.0
 
-    // Min ve max mesafe (tek yön) %5 tolerans ile
-    val minRadius = oneWayDistance * 0.95
-    val maxRadius = oneWayDistance * 1.05
+    // Yaptığım tesltler doğrultusunda 0.75 ve 0.9 en mantıklı çözüm.
+
+    val minRadius = oneWayDistance * 0.75
+    val maxRadius = oneWayDistance * 0.9
 
     val random = java.util.Random()
     val radiusInDegreesMin = minRadius / 111000f
@@ -336,8 +513,70 @@ fun calculateDistance(start: LatLng, end: LatLng): Float {
 }
 
 
+suspend fun generateValidTarget(
+    userLocation: LatLng,
+    selectedSteps: Int,
+    apiKey: String,
+    maxAttempts: Int = 10
+): LatLng? {
+    val targetDistance = selectedSteps * 0.7 // metre
+    val tolerance = targetDistance * 0.1      // %10 tolerans
+
+    repeat(maxAttempts) {
+        val randomLoc = generateRandomLocation(userLocation, selectedSteps)
+
+        // Directions API ile rota mesafesi al
+        val retrofit = Retrofit.Builder()
+            .baseUrl("https://maps.googleapis.com/maps/api/")
+            .addConverterFactory(MoshiConverterFactory.create())
+            .build()
+        val directionsApi = retrofit.create(DirectionsApi::class.java)
+
+        val toTargetResponse = directionsApi.getDirections(
+            origin = "${userLocation.latitude},${userLocation.longitude}",
+            destination = "${randomLoc.latitude},${randomLoc.longitude}",
+            apiKey = apiKey,
+            mode = "walking"
+        )
+        val toStartResponse = directionsApi.getDirections(
+            origin = "${randomLoc.latitude},${randomLoc.longitude}",
+            destination = "${userLocation.latitude},${userLocation.longitude}",
+            apiKey = apiKey,
+            mode = "walking",
+            alternatives = true
+
+        )
+
+        val leg1 = toTargetResponse.routes.firstOrNull()?.legs?.firstOrNull()
+        val leg2 = toStartResponse.routes.firstOrNull()?.legs?.firstOrNull()
+
+        val totalDistance = (leg1?.distance?.value ?: 0) + (leg2?.distance?.value ?: 0)
+
+        // Hedef tolerans içinde mi?
+        if (kotlin.math.abs(totalDistance - targetDistance) <= tolerance) {
+            return randomLoc
+        }
+    }
+
+    // Tolerans içinde bir hedef bulunamazsa son üretilen hedefi döndür
+    return generateRandomLocation(userLocation, selectedSteps)
+}
+
+fun Context.bitmapDescriptorFromRes(resId: Int): BitmapDescriptor {
+    val bitmap = BitmapFactory.decodeResource(resources, resId)
+    val scaledBitmap = Bitmap.createScaledBitmap(bitmap, 128, 128, false) // 96x96 güvenli boyut
+    return BitmapDescriptorFactory.fromBitmap(scaledBitmap)
+}
+
 // Challenge'ı bitirme fonksiyonu
 /*fun endChallenge() {
     val totalCaloriesBurned = calculateCalories(selectedSteps)
     udviewModel.updateCaloriesBurned(totalCaloriesBurned)
 }*/
+
+fun offsetTarget(latLng: LatLng): LatLng {
+    val offsetLat = latLng.latitude + (0.0009 - Math.random() * 0.0004) // ±100m
+    val offsetLng = latLng.longitude + (0.0009 - Math.random() * 0.0004)
+    return LatLng(offsetLat, offsetLng)
+}
+

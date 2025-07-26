@@ -9,6 +9,7 @@ interface DirectionsApi {
         @Query("origin") origin: String,
         @Query("destination") destination: String,
         @Query("mode") mode: String = "walking", // walking için
-        @Query("key") apiKey: String
+        @Query("alternatives") alternatives: Boolean = false,
+        @Query("key") apiKey: String,
     ): DirectionsResponse
 }

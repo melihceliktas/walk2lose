@@ -1,5 +1,7 @@
 package com.example.walk2lose
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -11,6 +13,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun AppNavigation(
 
@@ -30,7 +33,7 @@ fun AppNavigation(
                 navController = navController,
 
 
-                dailyCalories = 1800
+
 
             )
         }
@@ -41,15 +44,34 @@ fun AppNavigation(
             ChallengeScreen(selectedSteps = steps, navController = navController)
         }
 
-        composable("finish/{steps}/{calories}",listOf(
+
+        //geriye dönmeyi  engellemeyi unutma
+
+        composable("finish/{steps}/{calories}/{duration}",listOf(
             navArgument("steps") { type = NavType.IntType },
-            navArgument("calories") { type = NavType.IntType }
+            navArgument("calories") { type = NavType.IntType },
+            navArgument("duration") {type = NavType.StringType}
         )) { backStackEntry ->
 
             val steps = backStackEntry.arguments?.getInt("steps") ?: 0
             val calories = backStackEntry.arguments?.getInt("calories") ?: 0
+            val duration = backStackEntry.arguments?.getString("duration") ?: "00:00"
 
-            FinishScreen(steps = steps, calories = calories,navController = navController)
+            FinishScreen(steps = steps, calories = calories,navController = navController, duration = duration)
+        }
+
+        composable("incomplete/{steps}/{calories}/{duration}", listOf(
+            navArgument("steps") {type = NavType.IntType},
+            navArgument("calories") { type = NavType.IntType},
+            navArgument("duration") {type = NavType.StringType}
+        )) {backStackEntry ->
+
+            val steps = backStackEntry.arguments?.getInt("steps") ?: 0
+            val calories = backStackEntry.arguments?.getInt("calories") ?: 0
+            val duration = backStackEntry.arguments?.getString("duration") ?: "00:00"
+
+            IncompleteScreen(steps = steps, calories = calories, duration = duration, navController = navController)
+
         }
 
         composable("profile") {

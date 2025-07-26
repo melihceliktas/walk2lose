@@ -9,6 +9,7 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
 private val DarkColorScheme = darkColorScheme(
@@ -33,6 +34,40 @@ private val LightColorScheme = lightColorScheme(
     */
 )
 
+val MinimalColors = lightColorScheme(
+    primary = Color(0xFF3F51B5),   // Mavi
+    secondary = Color(0xFF7E57C2), // Mor
+    background = Color(0xFFF7F9FC),
+    surface = Color.White,
+    onPrimary = Color.White,
+    onSecondary = Color.White,
+    onBackground = Color.Black,
+    onSurface = Color.Black
+)
+
+@Composable
+fun Walk2LoseTheme(
+    darkTheme: Boolean = isSystemInDarkTheme(),
+    content: @Composable () -> Unit
+) {
+    val colors = if (darkTheme) {
+        MinimalColors
+
+    } else {
+        MinimalColors
+    }
+
+    MaterialTheme(
+        colorScheme = colors,
+        typography = Typography,
+        content = content
+    )
+}
+
+
+
+
+/*
 @Composable
 fun Walk2LoseTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
@@ -55,4 +90,4 @@ fun Walk2LoseTheme(
         typography = Typography,
         content = content
     )
-}
+}*/

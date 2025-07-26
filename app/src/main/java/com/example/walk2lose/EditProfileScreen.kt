@@ -1,7 +1,10 @@
 package com.example.walk2lose
 
+import android.os.Build
 import android.util.Log
 import android.widget.Toast
+import androidx.annotation.RequiresApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -37,12 +40,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 
+@RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditProfileScreen(
@@ -60,6 +65,7 @@ fun EditProfileScreen(
     var age by remember { mutableStateOf("") }
     var height by remember { mutableStateOf("") }
     var weight by remember { mutableStateOf("") }
+    var caloriesBurned by remember { mutableStateOf(0)}
 
     LaunchedEffect(userData) {
         userData?.let {
@@ -68,17 +74,26 @@ fun EditProfileScreen(
             age = if (it.age != 0) it.age.toString() else ""
             height = if (it.height != 0) it.height.toString() else ""
             weight = if (it.weight != 0) it.weight.toString() else ""
+            caloriesBurned = it.caloriesBurned
+
         }
     }
 
     Scaffold(
         topBar = {
             SmallTopAppBar(
+                modifier = Modifier.background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+                            MaterialTheme.colorScheme.background
+                        )
+                    )
+                ),
                 title = { Text("Profili Düzenle") },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Geri")
-                    }
+
+
                 }
             )
         }
@@ -88,7 +103,15 @@ fun EditProfileScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues),
+                    .padding(paddingValues)
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+                                MaterialTheme.colorScheme.background
+                            )
+                        )
+                    ),
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator()
@@ -98,7 +121,15 @@ fun EditProfileScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
-                    .padding(16.dp),
+                    .padding(16.dp)
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+                                MaterialTheme.colorScheme.background
+                            )
+                        )
+                    ),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 OutlinedTextField(
@@ -155,7 +186,8 @@ fun EditProfileScreen(
                             email = userData?.email ?: "",
                             age = age.toIntOrNull() ?: 0,
                             height = height.toIntOrNull() ?: 0,
-                            weight = weight.toIntOrNull() ?: 0
+                            weight = weight.toIntOrNull() ?: 0,
+                            caloriesBurned = caloriesBurned
                         )
 
                         viewModel.updateUserData(

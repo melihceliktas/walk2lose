@@ -90,11 +90,6 @@ fun ProfileScreen(
     val selectedDate = remember { mutableStateOf(LocalDate.now()) }
 
     Scaffold(
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = { Text("Profil", style = MaterialTheme.typography.headlineMedium) }
-            )
-        },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { navController.navigate("edit_profile") },

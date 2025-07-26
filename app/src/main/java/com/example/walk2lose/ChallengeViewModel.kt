@@ -3,10 +3,14 @@ package com.example.walk2lose
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.google.android.gms.maps.model.LatLng
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
 class ChallengeViewModel : ViewModel() {
     private val _targetLocation = MutableStateFlow<LatLng?>(null)
@@ -14,6 +18,12 @@ class ChallengeViewModel : ViewModel() {
 
     private val _isLoading = mutableStateOf(false)
     val isLoading: State<Boolean> = _isLoading
+
+
+    private val _elapsedTime = MutableStateFlow(0)
+    val elapsedTime: StateFlow<Int> = _elapsedTime
+
+    private var job: Job? = null
 
     fun setLoading(loading: Boolean) {
         _isLoading.value = loading
@@ -24,4 +34,26 @@ class ChallengeViewModel : ViewModel() {
         _targetLocation.value = location
     }
 
+    private var started = false
+
+    fun startTimer() {
+        if (started) return   // ✅ Zaten başladıysa tekrar başlama
+        started = true
+        job?.cancel()
+        job = viewModelScope.launch {
+            while (true) {
+                delay(1000)
+                _elapsedTime.value += 1
+            }
+        }
     }
+
+    fun stopTimer() {
+        job?.cancel()
+        started = false
+    }
+
+    fun resetTimer() {
+        _elapsedTime.value = 0
+    }
+}

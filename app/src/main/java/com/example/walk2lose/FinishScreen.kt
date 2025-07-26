@@ -1,5 +1,6 @@
 package com.example.walk2lose
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -13,6 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
@@ -23,14 +25,23 @@ import androidx.navigation.NavController
 fun FinishScreen(
     navController: NavController,
     steps: Int,
-    calories: Int
+    calories: Int,
+    duration: String
     ) {
 
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
+            .padding(16.dp)
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+                        MaterialTheme.colorScheme.background
+                    )
+                )
+            ),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -51,12 +62,20 @@ fun FinishScreen(
             style = MaterialTheme.typography.bodyLarge
         )
 
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = "Süre: ${duration} ", // Buraya mesafe verisi eklenecek
+            style = MaterialTheme.typography.bodyLarge
+        )
 
         Spacer(modifier = Modifier.height(24.dp))
 
         Button(onClick = {
 
-            navController.navigate("main")
+            navController.navigate("main"){
+                popUpTo("finish/$steps/$calories/$duration") {inclusive = false}
+            }
 
         }) {
             Text(text = "Ana Ekrana Dön")
