@@ -31,13 +31,19 @@ private val LightColorScheme = lightColorScheme(
     onTertiary = Color.White,
     onBackground = Color(0xFF1C1B1F),
     onSurface = Color(0xFF1C1B1F),
+
+    primary = Color(70, 70, 85),
+    secondary = Color(148, 149, 139),
+    background = Color(183, 182, 193),
+
+
     */
 )
 
 val MinimalColors = lightColorScheme(
-    primary = Color(0xFF3F51B5),   // Mavi
-    secondary = Color(0xFF7E57C2), // Mor
-    background = Color(0xFFF7F9FC),
+    primary = Color(100, 104, 129),
+    secondary = Color(99, 89, 92),
+    background = Color(64, 78, 77),
     surface = Color.White,
     onPrimary = Color.White,
     onSecondary = Color.White,

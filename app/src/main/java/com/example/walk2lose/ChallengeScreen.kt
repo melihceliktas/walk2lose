@@ -28,6 +28,7 @@ import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.ui.Alignment
 
 import androidx.compose.foundation.layout.Column
@@ -42,6 +43,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -54,6 +58,7 @@ import androidx.compose.ui.draw.clip
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.android.gms.location.LocationCallback
@@ -100,6 +105,8 @@ fun ChallengeScreen(
     var lastLocation by remember { mutableStateOf<LatLng?>(null) }
     var totalDistance by remember { mutableStateOf(0) }
     var totalDuration by remember { mutableStateOf(0)}
+
+    val isPaused by viewModel.isPaused.collectAsState1()
 
    // saniye
     var challengeStarted by remember { mutableStateOf(false) }
@@ -158,7 +165,7 @@ fun ChallengeScreen(
 
     // Kullanıcının yürüdüğü mesafe
     LaunchedEffect(userLocation) {
-        if (lastLocation != null && userLocation != null) {
+        if (!isPaused && lastLocation != null && userLocation != null) {
             val dist = FloatArray(1)
             Location.distanceBetween(
                 lastLocation!!.latitude, lastLocation!!.longitude,
@@ -209,9 +216,11 @@ fun ChallengeScreen(
     var caloriesText by remember { mutableStateOf("") }
 
     LaunchedEffect(routePoints) {
-        if (routePoints.isNotEmpty() ) {
+        if (routePoints.isNotEmpty() && !isPaused ) {
 
             viewModel.startTimer()
+        } else {
+            viewModel.stopTimer()
         }
     }
 
@@ -363,88 +372,104 @@ fun ChallengeScreen(
             }
         }
 
-        Column(
+        Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .wrapContentHeight()
-                .background(Color(0xFFF0F0F0))
-                .padding(16.dp)
+                .wrapContentHeight(),
+            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(10.dp)
         ) {
-            Text(text = "Mesafe: $distanceText", style = MaterialTheme.typography.bodyLarge)
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(text = "Tahmini Süre: $durationText", style = MaterialTheme.typography.bodyLarge)
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(text = "Yaklaşık Kalori: $caloriesText", style = MaterialTheme.typography.bodyLarge)
-            Spacer(modifier = Modifier.height(8.dp))
-
-            val minutes = elapsed / 60
-            val seconds = elapsed % 60
-
-            val formattedDuration = String.format("%02d:%02d", minutes, seconds)
-
-            Text(
-                text = String.format("Geçen Süre: %02d:%02d", minutes, seconds),
-                style = MaterialTheme.typography.bodyLarge
-            )
-
-
-            Spacer(modifier = Modifier.height(12.dp))
-            LinearProgressIndicator(
-                progress = progress.toFloat(),
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(12.dp)
-                    .clip(RoundedCornerShape(8.dp)),
-                color = MaterialTheme.colorScheme.primary
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "${(progress * 100).toInt()}% tamamlandı",
-                style = MaterialTheme.typography.bodyMedium
-            )
-
-            Button(
-                onClick = {
-                    totalDistanceWalked = totalDistance.toDouble() // test
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
+                    .padding(20.dp)
+                    .fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Text("test")
+                Text("Mesafe: $distanceText", style = MaterialTheme.typography.titleMedium)
+                Text("Tahmini Süre: $durationText", style = MaterialTheme.typography.titleMedium)
+                Text("Yaklaşık Kalori: $caloriesText", style = MaterialTheme.typography.titleMedium)
+
+                val minutes = elapsed / 60
+                val seconds = elapsed % 60
+                val formattedDuration = String.format("%02d:%02d", minutes, seconds)
+
+                Text(
+                    "Geçen Süre: $formattedDuration",
+                    style = MaterialTheme.typography.titleMedium
+                )
+
+                LinearProgressIndicator(
+                    progress = progress.toFloat(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(12.dp)
+                        .clip(RoundedCornerShape(8.dp)),
+                    color = MaterialTheme.colorScheme.primary
+                )
+
+                Text(
+                    "${(progress * 100).toInt()}% tamamlandı",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+
+                // ✅ Test butonu (istersen kaldırabilirsin)
+                Button(
+                    onClick = { totalDistanceWalked = totalDistance.toDouble() },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+                ) {
+                    Text(
+                        "Test",
+                        color = Color.White,
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                    )
+                }
+
+                Button(
+                    onClick = { viewModel.togglePause() },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                ) {
+                    Text(
+                        if (isPaused) "Devam Et" else "Durdur",
+                        color = Color.White,
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                    )
+                }
+
+                Button(
+                    onClick = {
+                        val userWeightKg = udviewModel.userData.value?.weight ?: 0
+                        val MET = 3.5
+                        val caloriesBurned = (MET * 3.5 * userWeightKg / 200) * (elapsed / 60.0)
+                        val stepLength = 0.70
+                        val currentSteps = (totalDistanceWalked / stepLength).toInt()
+
+                        udviewModel.updateCaloriesBurned(caloriesBurned.toInt())
+                        udviewModel.saveDailyStats(currentSteps, caloriesBurned.toInt())
+                        viewModel.stopTimer()
+
+                        navController.navigate("incomplete/$currentSteps/${caloriesBurned.toInt()}/$formattedDuration") {
+                            popUpTo("challenge/$selectedSteps") { inclusive = true }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+                ) {
+                    Text(
+                        "Challenge'ı Bitir",
+                        color = Color.White,
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                    )
+                }
             }
-
-
-
-            Button(
-                onClick = {
-                    // Challenge'ı manuel bitir
-                    val userWeightKg = udviewModel.userData.value?.weight ?: 0
-                    val MET = 3.5
-                    val caloriesBurned = (MET * 3.5 * userWeightKg / 200) * (elapsed / 60.0)
-
-                    val stepLength = 0.70
-                    val currentSteps = (totalDistanceWalked / stepLength).toInt()
-
-                    udviewModel.updateCaloriesBurned(caloriesBurned.toInt())
-                    udviewModel.saveDailyStats(currentSteps, caloriesBurned.toInt())
-
-                    viewModel.stopTimer()
-
-                    navController.navigate("incomplete/$currentSteps/${caloriesBurned.toInt()}/$formattedDuration") {
-                        popUpTo("challenge/$selectedSteps") { inclusive = true }
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            ) {
-                Text("Challenge'ı Bitir")
-            }
-
         }
-    }
-}
+
+}}
 
 fun generateRandomLocation(center: LatLng, selectedSteps: Int): LatLng {
     val stepLength = 0.70 // Ortalama adım uzunluğu (metre)

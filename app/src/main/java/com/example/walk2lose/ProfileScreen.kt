@@ -2,10 +2,19 @@ package com.example.walk2lose
 
 
 
+import android.app.Person
 import android.os.Build
 import android.widget.Toast
 import androidx.annotation.RequiresApi
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -58,13 +67,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -81,15 +93,10 @@ fun ProfileScreen(
 ) {
     LaunchedEffect(Unit) {
         viewModel.loadUserData()
-
     }
 
     val userData by viewModel.userData.collectAsState()
     val dailyStats by viewModel.dailyStats.collectAsState()
-
-    val selectedDate = remember { mutableStateOf(LocalDate.now()) }
-
-
 
     Scaffold(
         floatingActionButton = {
@@ -102,77 +109,122 @@ fun ProfileScreen(
         }
     ) { paddingValues ->
 
-        Box(
+        ProfileAnimatedBackground()
+
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                            MaterialTheme.colorScheme.background
-                        )
-                    )
-                )
-                .padding(20.dp)
         ) {
+            val screenHeight = maxHeight
+            val screenWidth = maxWidth
+
             if (userData == null) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             } else {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .align(Alignment.TopCenter),
+                        .padding(horizontal = screenWidth * 0.05f), // Ekranın %5'i kadar yan boşluk
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(20.dp)
+                    verticalArrangement = Arrangement.spacedBy(screenHeight * 0.03f) // Elemanlar arası %3 boşluk
                 ) {
-                    // İsim Soyisim büyük ve dikkat çekici
-                    Text(
-                        text = "${userData?.firstName} ${userData?.lastName}",
-                        style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold)
-                    )
+                    // ✅ Yukarıya ekran yüksekliğinin %10'u kadar boşluk
+                    Spacer(modifier = Modifier.height(screenHeight * 0.1f))
 
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        elevation = CardDefaults.cardElevation(6.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(20.dp),
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            ProfileInfoRow(label = "E-posta", value = userData?.email ?: "-")
-                            ProfileInfoRow(label = "Yaş", value = userData?.age?.toString() ?: "-")
-                            ProfileInfoRow(label = "Boy", value = "${userData?.height ?: "-"} cm")
-                            ProfileInfoRow(label = "Kilo", value = "${userData?.weight ?: "-"} kg")
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    CalendarView(
-
-                        dailyStats = dailyStats
-                    )
-
-
-
-
-                    /*Text(
-                        text = "Hesap Bilgileri",
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                        modifier = Modifier.align(Alignment.Start)
-                    )
-
-                    Text(
-                        text = "Bu bilgiler senin profilini oluşturmak için kullanılır. Düzenlemek için sağ alt köşedeki kalem ikonuna tıklayabilirsin.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.fillMaxWidth()
-                    )*/
+                    ProfileInfoCard(userData!!, screenHeight)
+                    CalendarCard(dailyStats, screenHeight)
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun ProfileInfoCard(userData: UserData, screenHeight: Dp) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(screenHeight * 0.26f), // Kart yüksekliği ekranın %25'i
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(6.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 20.dp, vertical = screenHeight * 0.02f), // Dikey padding oran bazlı
+            verticalArrangement = Arrangement.spacedBy(screenHeight * 0.015f)
+        ) {
+            Text(
+                text = "${userData.firstName} ${userData.lastName}",
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onPrimary
+            )
+            Divider(color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.3f))
+
+            ProfileInfoRow("E-posta", userData.email ?: "-")
+            ProfileInfoRow("Yaş", userData.age?.toString() ?: "-")
+            ProfileInfoRow("Boy", "${userData.height ?: "-"} cm")
+            ProfileInfoRow("Kilo", "${userData.weight ?: "-"} kg")
+        }
+    }
+}
+
+@RequiresApi(Build.VERSION_CODES.O)
+@Composable
+fun CalendarCard(dailyStats: List<DailyStats>, screenHeight: Dp) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(screenHeight * 0.45f), // Takvim kartı ekranın %45'i
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(4.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(screenHeight * 0.02f) // Takvim içi padding ekran oranına göre
+        ) {
+            CalendarView(dailyStats = dailyStats)
+        }
+    }
+}
+
+@Composable
+fun ProfileHeader(userData: UserData) {
+    Text(
+        text = "${userData.firstName} ${userData.lastName}",
+        style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+        color = Color.White
+    )
+}
+
+@Composable
+fun ProfileInfoCard(userData: UserData) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(6.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary)
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+
+            Text(
+                text = "${userData.firstName} ${userData.lastName}",
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onPrimary
+            )
+            Divider(color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.3f))
+
+            ProfileInfoRow("E-posta", userData.email ?: "-")
+            ProfileInfoRow("Yaş", userData.age?.toString() ?: "-")
+            ProfileInfoRow("Boy", "${userData.height ?: "-"} cm")
+            ProfileInfoRow("Kilo", "${userData.weight ?: "-"} kg")
         }
     }
 }
@@ -186,30 +238,24 @@ fun ProfileInfoRow(label: String, value: String) {
         Text(
             text = label,
             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onPrimary
         )
-        Text(text = value, style = MaterialTheme.typography.bodyMedium)
+        Text(text = value, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onPrimary)
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun StatInfoRow(label: String, value: String) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(1.dp), // Daha sıkışık bir görünüm için padding ekleyebiliriz
-        horizontalArrangement = Arrangement.SpaceBetween
+fun CalendarCard(dailyStats: List<DailyStats>) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(4.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
-            color = MaterialTheme.colorScheme.onSurface
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
-            color = MaterialTheme.colorScheme.onSurface
-        )
+        Column(modifier = Modifier.padding(16.dp)) {
+            CalendarView(dailyStats = dailyStats)
+        }
     }
 }
 
@@ -292,8 +338,8 @@ fun CalendarView(
                         .padding(1.dp)
                         .aspectRatio(0.85f)
                         .background(
-                            if (isToday) MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
-                            else MaterialTheme.colorScheme.surfaceVariant,
+                            if (isToday) MaterialTheme.colorScheme.secondary.copy(alpha = 0.3f)
+                            else MaterialTheme.colorScheme.secondary,
                             RoundedCornerShape(8.dp)
                         )
                 ) {
@@ -335,13 +381,13 @@ fun CalendarView(
                                             painter = painterResource(id=R.drawable.ic_step),
                                             contentDescription = "Steps",
                                             modifier = Modifier.size(valueFontSize.value.dp * 1.2f),
-                                            tint = MaterialTheme.colorScheme.primary
+                                            tint = Color.White
                                         )
                                         Spacer(modifier = Modifier.width(2.dp))
                                         Text(
                                             text = "${statsForDay.steps/1000}k",
                                             fontSize = valueFontSize,
-                                            color = MaterialTheme.colorScheme.primary,
+                                            color = Color.White,
                                             maxLines = 1
                                         )
                                     }
@@ -350,7 +396,7 @@ fun CalendarView(
                                     Text(
                                         text = "X",
                                         fontSize = valueFontSize,
-                                        color = Color.Gray,
+                                        color = Color.White,
                                         maxLines = 1
                                     )
                                 }
@@ -372,13 +418,13 @@ fun CalendarView(
                                             painter = painterResource(id = R.drawable.ic_fire),
                                             contentDescription = "Calories",
                                             modifier = Modifier.size(valueFontSize.value.dp * 1.2f),
-                                            tint = MaterialTheme.colorScheme.secondary
+                                            tint = Color.White
                                         )
                                         Spacer(modifier = Modifier.width(2.dp))
                                         Text(
                                             text = "${statsForDay.caloriesBurned}",
                                             fontSize = valueFontSize,
-                                            color = MaterialTheme.colorScheme.secondary,
+                                            color = Color.White,
                                             maxLines = 1
                                         )
                                     }
@@ -392,3 +438,37 @@ fun CalendarView(
                 }
         }
 
+@Composable
+fun ProfileAnimatedBackground() {
+    val infiniteTransition = rememberInfiniteTransition(label = "")
+    val rotation by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(90000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ), label = ""
+    )
+
+    val scale by infiniteTransition.animateFloat(
+        initialValue = 2f,
+        targetValue = 2.2f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(15000, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ), label = ""
+    )
+
+    Image(
+        painter = painterResource(R.drawable.person_wallpaper),
+        contentDescription = null,
+        modifier = Modifier
+            .fillMaxSize()
+            .graphicsLayer {
+                rotationZ = rotation
+                scaleX = scale
+                scaleY = scale
+            },
+        contentScale = ContentScale.Crop
+    )
+}

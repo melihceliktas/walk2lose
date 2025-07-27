@@ -2,9 +2,16 @@ package com.example.walk2lose
 
 import android.os.Build
 import androidx.annotation.RequiresApi
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -46,20 +53,25 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.nativeCanvas
 
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.max
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
@@ -76,14 +88,6 @@ fun MainScreen(
     val dailyCalories by viewModel.getTodayCaloriesFlow().collectAsState()
 
     Scaffold(
-        modifier = Modifier.background(
-            brush = Brush.verticalGradient(
-                colors = listOf(
-                    MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
-                    MaterialTheme.colorScheme.background
-                )
-            )
-        ),
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { navController.navigate("profile") },
@@ -94,25 +98,26 @@ fun MainScreen(
         }
     ) { innerPadding ->
 
+        // Arka plan görseli
+        /*Image(
+            painter = painterResource(id = R.drawable.emoji_wallpaper),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize()
+        )*/
+
+        AnimatedBackground()
+
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
-
-                .background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
-                            MaterialTheme.colorScheme.background
-                        )
-                    ))
                 .padding(innerPadding)
                 .padding(horizontal = 16.dp)
         ) {
-
             val screenHeight = maxHeight
             val topSpacer = screenHeight * 0.1f
-            val betweenHeaderAndStats = screenHeight * 0.05f
-            val betweenStatsAndButtons = screenHeight * 0.1f
+            val betweenHeaderAndStats = screenHeight * 0.04f
+            val betweenStatsAndButtons = screenHeight * 0.08f
             val betweenButtons = screenHeight * 0.04f
 
             Column(
@@ -122,97 +127,154 @@ fun MainScreen(
             ) {
                 Spacer(modifier = Modifier.height(topSpacer))
 
-                Text(
-                    text = "Merhaba, ${userData?.firstName ?: "Kullanıcı"} 👋",
-                    style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.ExtraBold)
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Text(
-                    text = if (dailyCalories > 0)
-                        "Bugün $dailyCalories kcal yaktın🔥, devam et!💪"
-                    else
-                        "Bugün için bir challenge seç!💪",
-                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
-                )
-
-                Spacer(modifier = Modifier.height(betweenHeaderAndStats))
-
-                Row(
+                // 🔹 Header + Stats (tamamen opak kart)
+                Card(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.secondary
+                    ),
+                    shape = RoundedCornerShape(16.dp),
+                    elevation = CardDefaults.cardElevation(8.dp)
                 ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_weight),
-                            contentDescription = "Kilo",
-                            modifier = Modifier.size(50.dp)
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = "Merhaba, ${userData?.firstName ?: "Kullanıcı"} 👋",
+                            style = MaterialTheme.typography.headlineLarge.copy(
+                                fontWeight = FontWeight.ExtraBold,
+                                color = MaterialTheme.colorScheme.onSecondary
+                            )
                         )
-                        Text("${userData?.weight ?: 0} KG",
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold)
-                    }
 
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_fire),
-                            contentDescription = "Kalori",
-                            tint = MaterialTheme.colorScheme.secondary,
-                            modifier = Modifier.size(50.dp)
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Text(
+                            text = if (dailyCalories > 0)
+                                "Bugün $dailyCalories kcal yaktın🔥, devam et!💪"
+                            else
+                                "Bugün için bir challenge seç!💪",
+                            style = MaterialTheme.typography.titleLarge.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSecondary
+                            )
                         )
-                        Text("$dailyCalories kcal",
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold)
+
+                        Spacer(modifier = Modifier.height(betweenHeaderAndStats))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_weight),
+                                    contentDescription = "Kilo",
+                                    tint = MaterialTheme.colorScheme.onSurface,
+                                    modifier = Modifier.size(50.dp)
+                                )
+                                Text(
+                                    "${userData?.weight ?: 0} KG",
+                                    style = MaterialTheme.typography.headlineSmall.copy(
+                                        color = MaterialTheme.colorScheme.onSecondary
+                                    ),
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_fire),
+                                    contentDescription = "Kalori",
+                                    //tint = MaterialTheme.colorScheme.secondary,
+                                    modifier = Modifier.size(50.dp)
+                                )
+                                Text(
+                                    "$dailyCalories kcal",
+                                    style = MaterialTheme.typography.headlineSmall.copy(
+                                        color = MaterialTheme.colorScheme.onSecondary
+                                    ),
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
                     }
                 }
 
                 Spacer(modifier = Modifier.height(betweenStatsAndButtons))
 
-                ChallengeRow(R.drawable.ic_oneshoe, level = "3000 ADIM 🚶‍♂️‍➡️") {
-                    navController.navigate("challenge/3000")
-                }
+                // 🔹 Challenge Butonları (tam renkli)
+                ChallengeRow(
+                    i =3,
+                    imageRes = R.drawable.ic_oneshoe,
+                    level = "3000 ADIM 🚶‍♂️‍➡️",
+                    backgroundColor = MaterialTheme.colorScheme.primary
+                ) { navController.navigate("challenge/3000") }
 
                 Spacer(modifier = Modifier.height(betweenButtons))
 
-                ChallengeRow(R.drawable.ic_duoshoe, level = "6000 ADIM 💨") {
-                    navController.navigate("challenge/6000")
-                }
+                ChallengeRow(
+                    i = 2,
+                    imageRes = R.drawable.ic_duoshoe,
+                    level = "6000 ADIM 💨",
+                    backgroundColor = MaterialTheme.colorScheme.primary
+                ) { navController.navigate("challenge/6000") }
 
                 Spacer(modifier = Modifier.height(betweenButtons))
 
-                ChallengeRow(R.drawable.ic_tripleshoe, level = "10000 ADIM 👟") {
-                    navController.navigate("challenge/10000")
-                }
+                ChallengeRow(
+                    i=1,
+                    imageRes = R.drawable.ic_tripleshoe,
+                    level = "10000 ADIM 👟",
+                    backgroundColor = MaterialTheme.colorScheme.primary
+                ) { navController.navigate("challenge/10000") }
             }
         }
     }
 }
 
 @Composable
-fun ChallengeRow(imageRes: Int, level: String, onClick: () -> Unit) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
+fun ChallengeRow(
+    i: Int,
+    imageRes: Int,
+    level: String,
+    backgroundColor: Color,
+    onClick: () -> Unit,
+) {
+    BoxWithConstraints(
         modifier = Modifier.fillMaxWidth()
     ) {
-        FloatingActionButton(
-            onClick = onClick,
-            shape = CircleShape,
-            containerColor = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(90.dp)
+        val screenWidth = maxWidth
+        val rowPadding = screenWidth * (i * 0.12f) // 🔹 oranlı padding
+        val iconSize = screenWidth * 0.15f         // 🔹 ikon boyutu oranlı
+        val textSize = screenWidth.value * 0.045f  // 🔹 text boyutu oranlı
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(end = rowPadding)
+                .clip(RoundedCornerShape(12.dp))
+                .background(backgroundColor)
+                .clickable(onClick = onClick)
+                .padding(vertical = 12.dp, horizontal = 16.dp)
         ) {
             Image(
                 painter = painterResource(id = imageRes),
                 contentDescription = null,
-                modifier = Modifier.size(90.dp)
+                modifier = Modifier.size(iconSize)
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Text(
+                text = level,
+                color = MaterialTheme.colorScheme.onSecondary,
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontSize = textSize.sp,
+                    fontWeight = FontWeight.Bold
+                )
             )
         }
-        Spacer(modifier = Modifier.width(16.dp))
-        Text(level, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
     }
 }
-
 
 
 @Composable
@@ -252,6 +314,39 @@ fun DailyCalorieSection(calorie: Int) {
     }
 }
 
+@Composable
+fun AnimatedBackground() {
+    val infiniteTransition = rememberInfiniteTransition(label = "")
+    val rotation by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(90000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ), label = ""
+    )
 
+    val scale by infiniteTransition.animateFloat(
+        initialValue = 2f,
+        targetValue = 2.2f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(15000, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ), label = ""
+    )
+
+    Image(
+        painter = painterResource(R.drawable.emoji_wallpaper2),
+        contentDescription = null,
+        modifier = Modifier
+            .fillMaxSize()
+            .graphicsLayer {
+                rotationZ = rotation
+                scaleX = scale
+                scaleY = scale
+            },
+        contentScale = ContentScale.Crop
+    )
+}
 
 

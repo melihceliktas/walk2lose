@@ -6,10 +6,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.android.gms.maps.model.LatLng
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.ticker
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 class ChallengeViewModel : ViewModel() {
@@ -37,14 +39,17 @@ class ChallengeViewModel : ViewModel() {
     private var started = false
 
     fun startTimer() {
-        if (started) return   // ✅ Zaten başladıysa tekrar başlama
+        if (started) return   //
         started = true
         job?.cancel()
         job = viewModelScope.launch {
-            while (true) {
-                delay(1000)
+            val ticker = ticker(delayMillis = 1000) //ticker işe yaradı onun dışında crash yiyordum
+            for (event in ticker){
+
+                if(!_isPaused.value){
+
                 _elapsedTime.value += 1
-            }
+            }}
         }
     }
 
@@ -55,5 +60,17 @@ class ChallengeViewModel : ViewModel() {
 
     fun resetTimer() {
         _elapsedTime.value = 0
+    }
+
+
+    private val _isPaused = MutableStateFlow(false)
+    val isPaused: StateFlow<Boolean> = _isPaused
+
+    fun togglePause() {
+        _isPaused.value = !_isPaused.value
+    }
+
+    fun setPause(value: Boolean) {
+        _isPaused.value = value
     }
 }
