@@ -115,6 +115,8 @@ fun ChallengeScreen(
 
     val elapsed by viewModel.elapsedTime.collectAsState1()
 
+    var reachedTarget by remember { mutableStateOf(false) }
+
     BackHandler(enabled = true) {
 
     }
@@ -294,21 +296,28 @@ fun ChallengeScreen(
     val contextx = LocalContext.current
 
     // Progress hesaplama
-    val progress = if (totalDistance > 0) {
-        (totalDistanceWalked / totalDistance).coerceIn(0.0, 1.0)
-    } else 0.0
+    val progress = when {
+        totalDistance <= 0 -> 0.0
+        !reachedTarget -> (totalDistanceWalked / (totalDistance / 2)).coerceIn(0.0, 1.0) * 0.5
+        else -> 0.5 + ((totalDistanceWalked - (totalDistance / 2)) / (totalDistance / 2)).coerceIn(0.0, 1.0) * 0.5
+    }
+
+    LaunchedEffect(userLocation, targetLocation, totalDistanceWalked) {
+        if (!reachedTarget && userLocation != null && targetLocation != null) {
+            if (isUserAtTarget(userLocation!!, targetLocation!!)) {
+                reachedTarget = true
+            }
+        }
+    }
 
     LaunchedEffect(progress) {
-
-        if(progress >= 1.0 && userLocation != null && targetLocation != null) {
-
+        if (progress >= 1.0 && userLocation != null && targetLocation != null) {
             val userWeightKg = udviewModel.userData.value?.weight ?: 0
             val MET = 3.5
-            val caloriesBurned = (MET * 3.5 * userWeightKg / 200) * (totalDuration/60)
+            val caloriesBurned = (MET * 3.5 * userWeightKg / 200) * (totalDuration / 60)
 
             val minutes = elapsed / 60
             val seconds = elapsed % 60
-
             val formattedDuration = String.format("%02d:%02d", minutes, seconds)
 
             udviewModel.updateCaloriesBurned(caloriesBurned.toInt())
@@ -319,9 +328,7 @@ fun ChallengeScreen(
             navController.navigate("finish/$selectedSteps/${caloriesBurned.toInt()}/$formattedDuration") {
                 popUpTo("challenge/$selectedSteps") { inclusive = true }
             }
-
         }
-
     }
 
 
@@ -356,18 +363,23 @@ fun ChallengeScreen(
                     val toTargetPoints = routePoints.subList(0, half)
                     val toStartPoints = routePoints.subList(half, routePoints.size)
 
-                    Polyline(
-                        points = toTargetPoints,
-                        color = Color(0xFF3F51B5).copy(alpha = 0.85f),
-                        width = 14f,
-                        jointType = JointType.ROUND
-                    )
-                    Polyline(
-                        points = toStartPoints,
-                        color = Color(0xFFFF5252).copy(alpha = 0.9f),
-                        width = 14f,
-                        jointType = JointType.ROUND
-                    )
+                    if (!reachedTarget) {
+                        // Gidiş: Kırmızı
+                        Polyline(
+                            points = toTargetPoints,
+                            color = Color(0xFFFF5252).copy(alpha = 0.9f),
+                            width = 14f,
+                            jointType = JointType.ROUND
+                        )
+                    } else {
+                        // Dönüş: Mavi
+                        Polyline(
+                            points = toStartPoints,
+                            color = Color(0xFF3F51B5).copy(alpha = 0.85f),
+                            width = 14f,
+                            jointType = JointType.ROUND
+                        )
+                    }
                 }
             }
         }
