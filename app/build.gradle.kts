@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -7,9 +9,14 @@ plugins {
     id ("com.google.gms.google-services")
 }
 
+
 android {
     namespace = "com.example.walk2lose"
     compileSdk = 35
+
+    buildFeatures{
+        buildConfig = true
+    }
 
     defaultConfig {
         applicationId = "com.example.walk2lose"
@@ -19,6 +26,26 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        val localProperties = Properties().apply {
+
+            val localPropertiesFile = rootProject.file("local.properties")
+            if (localPropertiesFile.exists()) {
+                load(localPropertiesFile.inputStream())
+            }
+        }
+
+        val mapApiKey = localProperties.getProperty("MAPS_API_KEY")
+            ?: throw GradleException("MAPS_API_KEY is not set in local.properties")
+
+
+        buildConfigField(
+            "String",
+            "MAPS_API_KEY",
+            mapApiKey
+        )
+
+        manifestPlaceholders["M_API_KEY"] = mapApiKey
     }
 
     buildTypes {
@@ -39,6 +66,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 

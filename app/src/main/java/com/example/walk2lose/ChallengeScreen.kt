@@ -81,6 +81,7 @@ import java.util.Random
 import kotlin.math.*
 import androidx.compose.runtime.collectAsState as collectAsState1
 
+
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun ChallengeScreen(
@@ -99,7 +100,11 @@ fun ChallengeScreen(
     var routePoints by remember { mutableStateOf<List<LatLng>>(emptyList()) }
     val coroutineScope = rememberCoroutineScope()
     val lifecycleOwner = LocalLifecycleOwner.current
-    val apiKey = "AIzaSyAHBvqnRsi-f0zWmAMF42xQ7o35cCEkK34"
+
+    val apiKey = BuildConfig.MAPS_API_KEY
+
+
+
 
     var totalDistanceWalked by remember { mutableStateOf(0.0) }
     var lastLocation by remember { mutableStateOf<LatLng?>(null) }
@@ -342,7 +347,7 @@ fun ChallengeScreen(
                 modifier = Modifier.fillMaxSize(),
                 cameraPositionState = cameraPositionState,
                 properties = MapProperties(isMyLocationEnabled = true),
-                uiSettings = MapUiSettings(zoomControlsEnabled = true)
+                uiSettings = MapUiSettings(zoomControlsEnabled = true),
             ) {
                 userLocation?.let {
                     Marker(
