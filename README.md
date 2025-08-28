@@ -29,4 +29,3 @@ It utilizes Google Maps API to select target locations and guides the user throu
 Melih Çeliktaş  
 [LinkedIn](https://www.linkedin.com/in/melih-%C3%A7elikta%C5%9F-77880218a/)
 
-© 2025 Melih Çeliktaş. All rights reserved.
